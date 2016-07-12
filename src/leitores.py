@@ -2,6 +2,7 @@
     Arquivo contendo os leitoers dos arquivos DAT
     Cada função é lê um tipo de .DAT
 """
+import numpy as np
 
 
 def leitor_frequencia_fof2(arquivo_entrada=None):
@@ -21,7 +22,7 @@ def leitor_frequencia_fof2(arquivo_entrada=None):
             linha = linha.split("  ")
 
             # Adicionando a posição 2 em um vetor
-            result.append(float(linha[1]))
+            result.append(np.float64(float(linha[1])))
 
     except Exception as e:
         print("Erro no leitor de frequencia foF2\n" + str(e))
@@ -46,7 +47,7 @@ def leitor_campo_eletrico_zonal(arquivo_entrada=None):
             linha = linha.split("  ")
 
             # Adicionando a posição 2 em um vetor
-            result.append(float(0.19E-04 * float(linha[1])))
+            result.append(np.float64(float(0.19E-04 * float(linha[1]))))
 
     except Exception as e:
         print("Erro no leitor de campo electrico zonal\n" + str(e))
@@ -70,8 +71,8 @@ def leitor_vento_termosferico(arquivo_entrada=None):
             # Quebrando a linha em vetor de 3 posições (H1, UM, UZ)
             linha = linha.split("  ")
 
-            result.append(linha[1])
-            result2.append(linha[2])
+            result.append(np.float64(float(linha[1])))
+            result2.append(np.float64(float(linha[2])))
 
     except Exception as e:
         print("Erro no leitor de vento termosférico\n" + str(e))

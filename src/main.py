@@ -47,7 +47,7 @@ AMP = 0.0470					# Amplitud de la perturbacion
 # Criando vetores vazios
 CO = CO2 = CN2 = BETA = CFO = np.zeros((JMAX), dtype=np.float64)
 
-for J in range(0, JMAX - 1):
+for J in range(0, JMAX):
     Z1 = HB + DZ * (J)
     GR = 1. / np.power((1.0 + Z1 / 6370.0), 2.0)
     HO = 0.0528 * TN / GR                           # Escala de altura O  [km]
@@ -63,7 +63,7 @@ for J in range(0, JMAX - 1):
 
 # Perfil Vertical Electronico inicial
 DEN_I = np.zeros((JMAX), dtype=np.float64)  # Criando vetor vazio
-for J in range(0, JMAX - 1):
+for J in range(0, JMAX):
     DEN_I[J] = 1.24E04 * np.power(F0F2[J], 2.0)
 
 # Parametros plano meridional magnetico
@@ -82,21 +82,22 @@ for M in range(0, 1):
 # Malha inicial + perturbação zonal em t = 0
 DEN = T = AA = CC = SOURCE = np.zeros((IMAX, JMAX), dtype=np.float64)  # Iniciando matrizes
 
-for J in range(0, JMAX - 1):
-    for I in range(0, IMAX - 1):
+for J in range(0, JMAX):
+    for I in range(0, IMAX):
         X1 = -DY * (NY - 1) / 2.0 + DY * (I)
         PERT = (1.0 - AMP * np.cos(ONDA * X1))
         DEN[I, J] = DEN_I[J] * PERT
+        print(DEN[I, J], I, J)
 
 # Programa Principal
 EOZ = np.zeros((JMAX), dtype=np.float64)
 for K in range(0, 1):
     E0 = EE0[K]
-    for J in range(0, JMAX - 1):
+    for J in range(0, JMAX):
         EOZ[J] = -E0
         UYZ[J] = 100.0
         UX[J] = 0.0
-    print(IMAX, JMAX, DY, DZ, CFO, DEN, AA, CC, SOURCE, E0, OMEGA1, EOZ, UYZ, UX, COSDIP, SENDIP, BO)
+
     os.system("pause")
     AA, CC, SOURCE = coef_pot.coef_pot(IMAX, JMAX, DY, DZ, CFO, DEN, AA, CC, SOURCE, E0, OMEGA1, EOZ, UYZ, UX, COSDIP, SENDIP, BO)
     potencial.potencial(T, DEN, DY, DZ, HB, IMAX, JMAX, K, AA, CC, SOURCE)

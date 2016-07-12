@@ -8,7 +8,7 @@ def coef_pot(IMAX, JMAX, DY, DZ, CFO, DEN, AA, CC, SOURCE, E0, OMEGA1, EOZ, UY, 
     # AA, CC, SOURCE - Parametros inseridos
     DYLN_DEN = DZLN_DEN = np.zeros((IMAX, JMAX), dtype=np.float64)
 
-    for I in range(1, JMAX - 2):
+    for I in range(1, JMAX - 1):
         BF = BO * np.power((6370.0 / ((I - 1) * DZ + 200.0 + 6370.0)), 3.0)
         GRAV = 9.81 * np.power((6370.0 / ((I - 1) * DZ + 200.0 + 6370.0)), 2.0)
         for J in range(1, IMAX - 2):
@@ -18,24 +18,19 @@ def coef_pot(IMAX, JMAX, DY, DZ, CFO, DEN, AA, CC, SOURCE, E0, OMEGA1, EOZ, UY, 
             DZLN_DEN[J, I] = (1.0 / DZ) * (DEN[J, I + 1] - DEN[J, I - 1]) / (DEN[J, I + 1] + DEN[J, I - 1])
             DZCFO = (CFO[I + 1] - CFO[I - 1]) / (2.0 * DZ)
 
-            s1 = (EOX + COSDIP * GRAV * BF / CFO[I] + UX[I] * BF * SENDIP + BF * CFO[I] * UY[I] / OMEGA1)
-            s2 = DYLN_DEN[J, I] * AJUS
-            s3 = (EOZ[I] - GRAV * BF / OMEGA1 + COSDIP * UY[I] * BF) * CC[J, I] * AJUS
-            s4 = (EOZ[I + 1] - EOZ[I - 1]) * AJUS / (2.0 * DZ)
-            s5 = COSDIP * BF * (UY[I + 1] - UY[I - 1]) * AJUS / (2.0 * DZ)
-
-            SOURCE[J, I] = s1 * s2 + s3 + s4 + s5
+            SOURCE[J, I] = (EOX + COSDIP * GRAV * BF / CFO[I] + UX[I] * BF * SENDIP + BF * CFO[I] * UY[I] / OMEGA1) * DYLN_DEN[J, I] * AJUS + (EOZ[I] - GRAV * BF / OMEGA1 + COSDIP * UY[I] * BF) * CC[J, I] * AJUS + (EOZ[I + 1] - EOZ[I - 1]) * AJUS / (2.0 * DZ) + COSDIP * BF * (UY[I + 1] - UY[I - 1]) * AJUS / (2.0 * DZ)
 
     # Boundary Top - Bottom
-    for K in range(IMAX - 1):
+    for K in range(0, IMAX):
         I1 = I2 = 0
 
-        if K == 0.0:
+        if K == 0:
             I1 = I2 = 1
 
         if K == IMAX - 1:
             I1 = I2 = -1
 
+        print(DY, DEN[K + 1 + I2, JMAX - 1], DEN[K - 1 + I1, JMAX - 1], DEN[K + 1 + I2, JMAX - 1], DEN[K - 1 + I1, JMAX - 1])
         AA[K, JMAX - 1] = (1.0 / DY) * (DEN[K + 1 + I2, JMAX - 1] - DEN[K - 1 + I1, JMAX - 1]) / (DEN[K + 1 + I2, JMAX - 1] + DEN[K - 1 + I1, JMAX - 1])
         AA[K, 1] = (1.0 / DY) * (DEN[K + 1 + I2, 1] - DEN[K - 1 + I1, 1]) / (DEN[K + 1 + I2, 1] + DEN[K - 1 + I1, 1])
         CC[K, JMAX - 1] = (1.0 / DZ) * (CFO[JMAX - 1] - CFO[JMAX - 3]) / (CFO[JMAX - 1] + CFO[JMAX - 3])
@@ -54,7 +49,7 @@ def coef_pot(IMAX, JMAX, DY, DZ, CFO, DEN, AA, CC, SOURCE, E0, OMEGA1, EOZ, UY, 
         SOURCE[K, 1] = (EOX + COSDIP * GRAV * BF / CFO[1]) * DZLN_DEN[K, 1] * AJUS - (GRAV * BF / OMEGA1) * CC[K, 1] * AJUS
 
     # Boundary Left - Right
-    for KX in range(1, JMAX - 2):
+    for KX in range(1, JMAX - 1):
         AA[1, KX] = (1.0 / DY) * (DEN[3, KX] - DEN[1, KX]) / (DEN[3, KX] + DEN[1, KX])
         AA[IMAX - 1, KX] = (1.0 / DY) * (DEN[IMAX - 1, KX] - DEN[IMAX - 3, KX]) / (DEN[IMAX - 1, KX] + DEN[IMAX - 3, KX])
         CC[1, KX] = (1.0 / DZ) * (CFO[KX + 1] * DEN[1, KX + 1] - CFO[KX - 1] * DEN[1, KX - 1]) / (CFO[KX + 1] * DEN[1, KX + 1] + CFO[KX - 1] * DEN[1, KX - 1])

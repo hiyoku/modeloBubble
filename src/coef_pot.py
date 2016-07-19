@@ -6,12 +6,16 @@ def coef_pot(IMAX, JMAX, DY, DZ, CFO, DEN, AA, CC, SOURCE, E0, OMEGA1, EOZ, UY, 
     AJUS = 1.0E3
 
     # AA, CC, SOURCE - Parametros inseridos
-    DYLN_DEN = DZLN_DEN = np.zeros((IMAX, JMAX), dtype=np.float64)
+    DYLN_DEN = np.zeros((IMAX, JMAX))
+    DZLN_DEN = np.zeros((IMAX, JMAX))
 
+    # print(DEN)
     for I in range(1, JMAX - 1):
-        BF = BO * np.power((6370.0 / ((I - 1) * DZ + 200.0 + 6370.0)), 3.0)
-        GRAV = 9.81 * np.power((6370.0 / ((I - 1) * DZ + 200.0 + 6370.0)), 2.0)
+        BF = BO * (6370.0 / ((I - 1) * DZ + 200.0 + 6370.0)) ** 3.0
+        GRAV = 9.81 * (6370.0 / ((I - 1) * DZ + 200.0 + 6370.0)) ** 2.0
+
         for J in range(1, IMAX - 2):
+            # print(DEN[J, I])
             AA[J, I] = (1.0 / DY) * (DEN[J + 1, I] - DEN[J - 1, I]) / (DEN[J + 1, I] + DEN[J - 1, I])
             CC[J, I] = (1.0 / DZ) * (CFO[I + 1] * DEN[J, I + 1] - CFO[I - 1] * DEN[J, I - 1]) / (CFO[I + 1] * DEN[J, I + 1] + CFO[I - 1] * DEN[J, I - 1])
             DYLN_DEN[J, I] = (1.0 / DY) * (DEN[J + 1, I] - DEN[J - 1, I]) / (DEN[J + 1, I] + DEN[J - 1, I])
@@ -30,7 +34,7 @@ def coef_pot(IMAX, JMAX, DY, DZ, CFO, DEN, AA, CC, SOURCE, E0, OMEGA1, EOZ, UY, 
         if K == IMAX - 1:
             I1 = I2 = -1
 
-        print(DY, DEN[K + 1 + I2, JMAX - 1], DEN[K - 1 + I1, JMAX - 1], DEN[K + 1 + I2, JMAX - 1], DEN[K - 1 + I1, JMAX - 1])
+        # print(DY, DEN[K + 1 + I2, JMAX - 1], DEN[K - 1 + I1, JMAX - 1], DEN[K + 1 + I2, JMAX - 1], DEN[K - 1 + I1, JMAX - 1])
         AA[K, JMAX - 1] = (1.0 / DY) * (DEN[K + 1 + I2, JMAX - 1] - DEN[K - 1 + I1, JMAX - 1]) / (DEN[K + 1 + I2, JMAX - 1] + DEN[K - 1 + I1, JMAX - 1])
         AA[K, 1] = (1.0 / DY) * (DEN[K + 1 + I2, 1] - DEN[K - 1 + I1, 1]) / (DEN[K + 1 + I2, 1] + DEN[K - 1 + I1, 1])
         CC[K, JMAX - 1] = (1.0 / DZ) * (CFO[JMAX - 1] - CFO[JMAX - 3]) / (CFO[JMAX - 1] + CFO[JMAX - 3])
@@ -54,7 +58,6 @@ def coef_pot(IMAX, JMAX, DY, DZ, CFO, DEN, AA, CC, SOURCE, E0, OMEGA1, EOZ, UY, 
         AA[IMAX - 1, KX] = (1.0 / DY) * (DEN[IMAX - 1, KX] - DEN[IMAX - 3, KX]) / (DEN[IMAX - 1, KX] + DEN[IMAX - 3, KX])
         CC[1, KX] = (1.0 / DZ) * (CFO[KX + 1] * DEN[1, KX + 1] - CFO[KX - 1] * DEN[1, KX - 1]) / (CFO[KX + 1] * DEN[1, KX + 1] + CFO[KX - 1] * DEN[1, KX - 1])
         CC[IMAX - 1, KX] = (1.0 / DZ) * (CFO[KX + 1] * DEN[IMAX - 1, KX + 1] - CFO[KX - 1] * DEN[IMAX - 1, KX - 1]) / (CFO[KX + 1] * DEN[IMAX - 1, KX + 1] + CFO[KX - 1] * DEN[IMAX - 1, KX - 1])
-
         # LEFT FOR SOURCE
         DYLN_DEN[1, KX] = (1.0 / DY) * (DEN[3, KX] - DEN[1, KX]) / (DEN[3, KX] + DEN[1, KX])
         DZLN_DEN[1, KX] = (1.0 / DY) * (DEN[1, KX + 1] - DEN[1, KX - 1]) / (DEN[1, KX + 1] + DEN[1, KX - 1])

@@ -167,7 +167,7 @@ if __name__ == '__main__':
         DTDY = np.zeros((IMAX, JMAX))
         UY = np.zeros((JMAX))
 
-        for K in range(0, 360):
+        for K in range(0, 539):
             E0 = EE0[K]
             # for J in range(0, JMAX):
             #     EOZ[J] = -E0

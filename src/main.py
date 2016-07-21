@@ -102,8 +102,8 @@ def get_all_uy_ux(point, ver):
     while i <= 800.0:
         point.alt = i
         point.run_hwm(version=ver)
-        UY.append(np.float64(point.u))
-        UX.append(np.float64(point.v))
+        UY.append(point.u)
+        UX.append(point.v)
 
         i += 5  # passo em 5km
 
@@ -126,7 +126,7 @@ if __name__ == '__main__':
     lon = 0
 
     msis_alt = 335.0
-    msis_lat = 0.0
+    msis_lat = 0
     msis_lon = -40.0
 
     F0F2 = leitores.leitor_frequencia_fof2(os.getcwd() + "/inputs/input-foF2.dat")
@@ -134,8 +134,11 @@ if __name__ == '__main__':
     UX, UYZ = leitores.leitor_vento_termosferico("inputs/input-wind.dat")
 
     # Criando o Point do PyGlow
+    print('criando ponto')
     ponto = Point(dn, msis_lat, msis_lon, msis_alt)
+    print('rodando msis')
     ponto.run_msis()
+    print(ponto.Tn_msis, np.float64(ponto.nn['O']), np.float64(ponto.nn['O2']), np.float64(ponto.nn['N2']))
 
 
     # Definindo parametros da malha
@@ -212,6 +215,8 @@ if __name__ == '__main__':
         # Parametros do Point
         ponto.lat = XLAT
         UY, UX = get_all_uy_ux(ponto, versao_hwm)
+        np.savetxt('uy.txt', UY)
+        np.savetxt('ux.txt', UX)
 
         # Malha inicial + perturbacao zonal em t = 0
         DEN = np.zeros((IMAX, JMAX))
@@ -240,10 +245,7 @@ if __name__ == '__main__':
         EPS1 = 0
         ANORM = 0
 
-        ii = 1
         for E0 in EE0:  # Campo Electrico = Tempo = 540 interactions
-            print('iteracao {}'.format(ii))
-            ii += 1
             # for J in range(0, JMAX):
             #     EOZ[J] = -E0
             #     UY = UYZ

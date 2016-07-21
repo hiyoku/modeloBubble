@@ -55,7 +55,7 @@ def run_parallel():
     dn = datetime(2011, 3, 23, 9, 30)
     lat = 0.
     lon = -80.
-    alt = 250.00, 300.00
+    alt = 250.00
 
     processes = []
     processes.append(Process(target=create_point, args=(dn, lat, lon, alt, 1993)))
@@ -85,17 +85,31 @@ if __name__ == '__main__':
     # main2()
     # run_parallel()
 
-    JMAX = 121
-    DEN_I = np.zeros((JMAX))
+    # JMAX = 121
+    # DEN_I = np.zeros((JMAX))
 
-    dn = datetime(2015, 10, 23, 21)
-    msis_alt = 335
-    msis_lat = 0
-    msis_lon = -40
+    dn = datetime(2015, 10, 23, 21, 0)
+    msis_alt = 335.
+    msis_lat = 0.
+    msis_lon = -40.
+
+    # dn = datetime(2011, 3, 23, 9, 30)
+    # msis_lat = 0.
+    # msis_lon = -80.
+    # msis_alt = 250.
 
     # Criando o Point do PyGlow
+    # Criando o Point do PyGlow
+    print('criando ponto')
     ponto = Point(dn, msis_lat, msis_lon, msis_alt)
-    DEN_I2 = get_ne_alt(ponto)
+    print('rodando igrf')
+    ponto.run_igrf()
+    print('rodando hwm')
+    ponto.run_hwm93()
+    print(ponto.u, ponto.v)
+    print('rodando msis')
+    ponto.run_msis()
+    print(ponto.Tn_msis, np.float64(ponto.nn['O']), np.float64(ponto.nn['O2']), np.float64(ponto.nn['N2']))
 
-    print len(DEN_I)
-    print len(DEN_I2)
+    # from pyglow.pyglow import update_indices
+    # update_indices([2012, 2016])  # grabs indices for 2012 and 2013

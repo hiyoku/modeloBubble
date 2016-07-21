@@ -183,7 +183,8 @@ C     ===================== END COEF_POT FUNCTION ======================
 C     ==================================================================
 C     Função do pontencial eletrico
 C     ==================================================================
-      SUBROUTINE POTENCIAL(T,DY,DZ,IMAX,JMAX,AA,CC,SOURCE)
+      SUBROUTINE POTENCIAL(T,DY,DZ,IMAX,JMAX,AA,CC,SOURCE,OMEGA,K,
+     *                     EPS1,ANORM)
       PARAMETER (NY = 81, NZ = 121, PI = 3.141592654)
       DIMENSION A(NY, NZ),   B(NY, NZ),  C(NY, NZ),
      *          D(NY, NZ),   F(NY, NZ),  SOURCE(NY, NZ),
@@ -195,8 +196,8 @@ C     Despues de la discretizacion
 C     T(i,j)= A*T(i+1,j) + B*T(i-1,j) + C*T(i,j+1) + D*T(i,j-1) - F
 
 C     ===================== Parametros do F2PY =========================
-Cf2py intent(in) T, DY, DZ, IMAX, JMAX, AA, CC, SOURCE
-Cf2py intent(out) T
+Cf2py intent(in) T, DY, DZ, IMAX, JMAX, AA, CC, SOURCE, OMEGA, K, EPS1, ANORM
+Cf2py intent(out) T, OMEGA, K, EPS1, ANORM
 C     ==================================================================
       DY2 = DY * DY
       DZ2 = DZ * DZ

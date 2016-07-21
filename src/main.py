@@ -1,12 +1,18 @@
-import leitores
-# import potencial  # Função antiga de potencial
-# from pot import potencial
-from rotinas_fortran import (potencial, coef_pot, veloc_ion, density, line1356, line6300, tecn)
-# import coef_pot
+# Making a compartible code
+from __future__ import print_function
+
+# Python Native lib imports
 import numpy as np
 import os
 from datetime import datetime
 from multiprocessing import Process
+
+# Import PyGlow
+from pyglow.pyglow import Point
+
+# Program imports
+import leitores
+from rotinas_fortran import (potencial, coef_pot, veloc_ion, density, line1356, line6300, tecn)
 
 
 def func_line1356(IMAX, JMAX, DZ, DEN, DY, XLAT):
@@ -28,6 +34,12 @@ def func_tecn(IMAX, JMAX, DZ, DEN):
     TEC = tecn(IMAX, JMAX, DZ, DEN, TEC)
 
     return TEC
+
+
+def write_pot_log(OMEGA, K, EPS1, ANORM):
+    with open('logs/log-pot.txt', 'a') as log:
+        log.write("OMEGA: {}\nInteracoes: {}\nEpsilon: {}\nError: {}\n".format(OMEGA, K, EPS1, ANORM * EPS1))
+        log.write("============================================\n")
 
 
 def write_all(DY, DZ, HB, NY, XLAT, IMAX, JMAX, DEN, VY, VZ, CO, CO2, CN2):
@@ -58,8 +70,44 @@ def write_all(DY, DZ, HB, NY, XLAT, IMAX, JMAX, DEN, VY, VZ, CO, CO2, CN2):
 
 
 def start_norm(DY, DZ, HB, NY, XLAT, IMAX, JMAX, DEN, VY, VZ, CO, CO2, CN2):
+    print('normalizacao')
     t = Process(target=write_all, args=(DY, DZ, HB, NY, XLAT, IMAX, JMAX, DEN, VY, VZ, CO, CO2, CN2))
     t.start()
+
+
+def start_logging(OMEGA, K, EPS1, ANORM):
+    l = Process(target=write_pot_log, args=(OMEGA, K, EPS1, ANORM))
+    l.start()
+
+
+def get_ne_alt(point):
+    DEN_I = []
+    i = 200
+
+    while i <= 800:
+        point.alt = i
+        point.run_iri()
+        DEN_I.append(point.ne)
+
+        i += 5  # passo de 5km
+
+    return DEN_I
+
+
+def get_all_uy_ux(point, ver):
+    UY = []
+    UX = []
+    i = 200.0
+
+    while i <= 800.0:
+        point.alt = i
+        point.run_hwm(version=ver)
+        UY.append(np.float64(point.u))
+        UX.append(np.float64(point.v))
+
+        i += 5  # passo em 5km
+
+    return UY, UX
 
 
 if __name__ == '__main__':
@@ -72,12 +120,25 @@ if __name__ == '__main__':
     BO = 0.285E-04
     PI = np.pi
 
+    # Parametros PyGlow
+    versao_hwm = 1993   # Ano da versao do HWM
+    dn = datetime(2015, 10, 23, 21)
+    lon = 0
+
+    msis_alt = 335.0
+    msis_lat = 0.0
+    msis_lon = -40.0
+
     F0F2 = leitores.leitor_frequencia_fof2(os.getcwd() + "/inputs/input-foF2.dat")
     EE0 = leitores.leitor_campo_eletrico_zonal("inputs/input-vz.dat")
     UX, UYZ = leitores.leitor_vento_termosferico("inputs/input-wind.dat")
 
+    # Criando o Point do PyGlow
+    ponto = Point(dn, msis_lat, msis_lon, msis_alt)
+    ponto.run_msis()
 
-    # Definindo parâmetros da malha
+
+    # Definindo parametros da malha
     IMAX = NY           # Contador en la horizontal
     JMAX = NZ           # Contador en la vertical
     DY = 5.0            # Paso en Longitud  [km]
@@ -85,18 +146,19 @@ if __name__ == '__main__':
     DTT = 10.0          # Paso en tiempo    [s]
     UT0 = 21.666        # Tiempo inicial en UT = 21:40
 
-    # Parametros da região F
-    HB = 200.0              # Altura base da região F [km]
+    # Parametros da regiao F
+    HB = 200.0              # Altura base da regiao F [km]
     RK1 = 4.0E-11           # Recombinacion [O+] con [O2]
     RK2 = 1.3E-12           # Recombinacion [O+] con [N2]
-    TN = 1200.4             # Temperatura neutra exosferica
+    # TN = 1200.4             # Temperatura neutra exosferica
+    TN = np.float64(ponto.Tn_msis)
     TE = 1800.0             # Temperatura electronica
     OMEGA1 = 150.19         # Girofrecuencia O+ [s]
     OMEGA2 = -4.396E06      # Girofrecuencia e- [s] q = -e
     ZMASAO = 2.66E-26       # Masa O+ [kg]
     ZMASAE = 9.11E-31       # Masa e- [kg]
 
-    # Parametros da onda de perturbação zonal
+    # Parametros da onda de perturbacao zonal
     ZLAMDA = 400.0                  # Longitud de onda en km
     ONDA = 2.0 * PI / ZLAMDA        # Numero de onda
     AMP = 0.0470                    # Amplitud de la perturbacion
@@ -115,18 +177,24 @@ if __name__ == '__main__':
         HO = 0.0528 * TN / GR                           # Escala de altura O  [km]
         HO2 = 0.0264 * TN / GR                          # Escala de altura O2 [km]
         HN2 = 0.0302 * TN / GR                          # Escala de altura N2 [km]
-        CO[J] = 8.557E+08 * np.exp(-(Z1 - 335.0) / HO)  # Oxigeno atomico    [cm-3]
-        CO2[J] = 4.44E+06 * np.exp(-(Z1 - 335.0) / HO2)  # Oxigeno molecular [cm3]
-        CN2[J] = 2.264E+08 * np.exp(-(Z1 - 335.0) / HN2)  # Nitrogeno molecular[cm3]
+        # CO[J] = 8.557E+08 * np.exp(-(Z1 - 335.0) / HO)  # Oxigeno atomico    [cm-3]
+        # CO2[J] = 4.44E+06 * np.exp(-(Z1 - 335.0) / HO2)  # Oxigeno molecular [cm3]
+        # CN2[J] = 2.264E+08 * np.exp(-(Z1 - 335.0) / HN2)  # Nitrogeno molecular[cm3]
+        CO[J] = np.float64(ponto.nn['O']) * np.exp(-(Z1 - 335.0) / HO)  # Oxigeno atomico    [cm-3]
+        CO2[J] = np.float64(ponto.nn['O2']) * np.exp(-(Z1 - 335.0) / HO2)  # Oxigeno molecular [cm3]
+        CN2[J] = np.float64(ponto.nn['N2']) * np.exp(-(Z1 - 335.0) / HN2)  # Nitrogeno molecular[cm3]
         BETA[J] = (RK1 * CO2[J]) + (RK2 * CN2[J])  # Recombinacion [1/s]
 
-        # Colisões
+        # Colisoes
         CFO[J] = 4.45E-11 * CO[J] * np.sqrt(TN) * (1.04 - 0.067 * np.log10(TN)) ** 2. + 6.64E-10 * CO2[J] + 6.82E-10 * CN2[J]
 
     # Perfil Vertical Electronico inicial
-    DEN_I = np.zeros((JMAX))  # Criando vetor vazio
-    for J in range(0, JMAX):
-        DEN_I[J] = 1.24E04 * F0F2[J] ** 2.0
+    # DEN_I = np.zeros((JMAX))  # Criando vetor vazio
+
+    DEN_I = get_ne_alt(ponto)
+
+    # for J in range(0, JMAX):
+    #     DEN_I[J] = 1.24E04 * F0F2[J] ** 2.0
 
     # Parametros plano meridional magnetico
     for M in range(0, 21):
@@ -141,7 +209,11 @@ if __name__ == '__main__':
         F3 = np.sqrt(1. + 3. * SENLAT ** 2.)
         FU = 1.0 / (0.7 + 0.4 * np.exp(-(XLAT) ** 2.0 / 200.0) - 0.035)
 
-        # Malha inicial + perturbação zonal em t = 0
+        # Parametros do Point
+        ponto.lat = XLAT
+        UY, UX = get_all_uy_ux(ponto, versao_hwm)
+
+        # Malha inicial + perturbacao zonal em t = 0
         DEN = np.zeros((IMAX, JMAX))
         DEN2 = np.zeros((IMAX, JMAX))
         T = np.zeros((IMAX, JMAX))
@@ -154,38 +226,46 @@ if __name__ == '__main__':
                 X1 = -DY * (NY - 1) / 2.0 + DY * I
                 PERT = (1.0 - AMP * np.cos(ONDA * X1))
                 DEN[I, J] = DEN_I[J] * PERT
-                # print(DEN[I, J], DEN_I[J] * PERT)
 
-        # print("PRINTANDO DEN")
-        # print(DEN)
         # Programa Principal
-        # Criando matrizes necessárias
+        # Criando matrizes necessarias
         EOZ = np.zeros((JMAX))
         VY = np.zeros((IMAX, JMAX))
         VZ = np.zeros((IMAX, JMAX))
         DTDZ = np.zeros((IMAX, JMAX))
         DTDY = np.zeros((IMAX, JMAX))
         UY = np.zeros((JMAX))
+        OMEGA = 0
+        K = 0
+        EPS1 = 0
+        ANORM = 0
 
-        for K in range(0, 539):
-            E0 = EE0[K]
+        ii = 1
+        for E0 in EE0:  # Campo Electrico = Tempo = 540 interactions
+            print('iteracao {}'.format(ii))
+            ii += 1
             # for J in range(0, JMAX):
             #     EOZ[J] = -E0
             #     UY = UYZ
             #     UX[J] = 0.0
             EOZ = [(i - i - E0) for i in EOZ]
-            UY = UYZ
-            UX = [(i - i) for i in UX]
+            # Tempo - Vento
+            # UY = UYZ
+            # UX = [(i - i) for i in UX]
+
+            # Vetor Tempo - Vento (PONTO)
 
             DEN, AA, CC, SOURCE = coef_pot(IMAX, JMAX, DY, DZ, CFO, DEN, AA, CC, SOURCE, E0, OMEGA1, EOZ, UY, UX, COSDIP, SENDIP, BO)
 
-            T = potencial(T, DY, DZ, IMAX, JMAX, AA, CC, SOURCE)
+            T, OMEGA, K, EPS1, ANORM = potencial(T, DY, DZ, IMAX, JMAX, AA, CC, SOURCE, OMEGA, K, EPS1, ANORM)
+
+            start_logging(OMEGA, K, EPS1, ANORM)
 
             VY, VZ, DTDZ, DTDY = veloc_ion(IMAX, JMAX, DY, DZ, T, CFO, OMEGA1, E0, UY, UX, EOZ, COSDIP, SENDIP, BO, VY, VZ, DTDZ, DTDY)
 
             DEN, DY, DZ, VY, VZ = density(DEN, IMAX, JMAX, DY, DZ, BETA, DTT, VY, VZ)
 
-        # Normalizações
+        # Normalizacoes
         start_norm(DY, DZ, HB, NY, XLAT, IMAX, JMAX, DEN, VY, VZ, CO, CO2, CN2)
 
-    print("Tempo de execução -> " + str(datetime.utcnow() - tempo_inicio))
+    print("Tempo de execucao -> " + str(datetime.utcnow() - tempo_inicio))

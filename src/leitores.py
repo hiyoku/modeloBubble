@@ -1,6 +1,6 @@
 """
     Arquivo contendo os leitoers dos arquivos DAT
-    Cada função é lê um tipo de .DAT
+    Cada funcao le um tipo de .DAT
 """
 import numpy as np
 
@@ -8,7 +8,7 @@ import numpy as np
 def leitor_frequencia_fof2(arquivo_entrada=None):
     """
         Leitor de Frequencia foF2 21:45 UT
-        Função para ler um arquivo DAT
+        Funcao para ler um arquivo DAT
         Retorna um vetor
     """
     result = []   # Criando um vetor vazio
@@ -16,12 +16,12 @@ def leitor_frequencia_fof2(arquivo_entrada=None):
     try:
         arquivoDAT = open(arquivo_entrada, 'r')   # Abrindo um Arquivo
 
-        # Quebrando a linha em vetor de 2 posições (XH, F2)
+        # Quebrando a linha em vetor de 2 posicoes (XH, F2)
         for linha in arquivoDAT:
-            # Quebrando a linha em vetor de 2 posições (XH, F2)
+            # Quebrando a linha em vetor de 2 posicoes (XH, F2)
             linha = linha.split("  ")
 
-            # Adicionando a posição 2 em um vetor
+            # Adicionando a posicao 2 em um vetor
             result.append(np.float64(float(linha[1])))
 
     except Exception as e:
@@ -34,7 +34,7 @@ def leitor_frequencia_fof2(arquivo_entrada=None):
 def leitor_campo_eletrico_zonal(arquivo_entrada=None):
     """
         Leitor de Campo Electrico Zonal = BG * dhF / dt
-        Função para ler um arquivo DAT
+        Funcao para ler um arquivo DAT
         Retorna um vetor
     """
     result = []
@@ -43,10 +43,10 @@ def leitor_campo_eletrico_zonal(arquivo_entrada=None):
         arquivoDAT = open(arquivo_entrada, 'r')   # Abrindo um Arquivo
 
         for linha in arquivoDAT:
-            # Quebrando a linha em vetor de 2 posições (hora, drift)
+            # Quebrando a linha em vetor de 2 posicoes (hora, drift)
             linha = linha.split("  ")
 
-            # Adicionando a posição 2 em um vetor
+            # Adicionando a posicao 2 em um vetor
             result.append(np.float64(float(0.19E-04 * float(linha[1]))))
 
     except Exception as e:
@@ -57,8 +57,8 @@ def leitor_campo_eletrico_zonal(arquivo_entrada=None):
 
 def leitor_vento_termosferico(arquivo_entrada=None):
     """
-        Leitor de vento termosférico UYZ (zonal), UX (Meridional)
-        Função para ler um arquivo DAT
+        Leitor de vento termosferico UYZ (zonal), UX (Meridional)
+        Funcao para ler um arquivo DAT
         Retorna um vetor
     """
     result = []
@@ -68,13 +68,13 @@ def leitor_vento_termosferico(arquivo_entrada=None):
         arquivoDAT = open(arquivo_entrada, 'r')   # Abrindo um Arquivo
 
         for linha in arquivoDAT:
-            # Quebrando a linha em vetor de 3 posições (H1, UM, UZ)
+            # Quebrando a linha em vetor de 3 posicoes (H1, UM, UZ)
             linha = linha.split("  ")
 
             result.append(np.float64(float(linha[1])))
             result2.append(np.float64(float(linha[2])))
 
     except Exception as e:
-        print("Erro no leitor de vento termosférico\n" + str(e))
+        print("Erro no leitor de vento termosferico\n" + str(e))
     finally:
         return result, result2

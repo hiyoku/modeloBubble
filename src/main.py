@@ -70,7 +70,6 @@ def write_all(DY, DZ, HB, NY, XLAT, IMAX, JMAX, DEN, VY, VZ, CO, CO2, CN2):
 
 
 def start_norm(DY, DZ, HB, NY, XLAT, IMAX, JMAX, DEN, VY, VZ, CO, CO2, CN2):
-    print('normalizacao')
     t = Process(target=write_all, args=(DY, DZ, HB, NY, XLAT, IMAX, JMAX, DEN, VY, VZ, CO, CO2, CN2))
     t.start()
 
@@ -110,6 +109,79 @@ def get_all_uy_ux(point, ver):
     return UY, UX
 
 
+def loop_lat(M, DY, DZ, ponto, tempo_inicio):
+    print('Processo {} iniciado!'.format(M))
+    XLAT = -30.0 + 3.0 * M
+    PHI = XLAT * PI / 180.0
+    COSLAT = np.cos(PHI)
+    SENLAT = np.sin(PHI)
+    COSDIP = COSLAT / np.sqrt(1.0 + 3.0 * SENLAT ** 2.0)
+    SENDIP = 2. * SENLAT / np.sqrt(1. + 3. * SENLAT ** 2.0)
+    # F1 = COSLAT ** 3.0 / np.sqrt(1.0 + 3. * SENLAT ** 2.0)   # to  zonal electric
+    # F2 = COSLAT ** 3.0                                 # to vertical electric
+    # F3 = np.sqrt(1. + 3. * SENLAT ** 2.)
+    # FU = 1.0 / (0.7 + 0.4 * np.exp(-(XLAT) ** 2.0 / 200.0) - 0.035)
+
+    # Parametros do Point
+    ponto.lat = XLAT
+    UY, UX = get_all_uy_ux(ponto, versao_hwm)
+    # np.savetxt('uy.txt', UY)
+    # np.savetxt('ux.txt', UX)
+
+    # Malha inicial + perturbacao zonal em t = 0
+    DEN = np.zeros((IMAX, JMAX))
+    T = np.zeros((IMAX, JMAX))
+    AA = np.zeros((IMAX, JMAX))
+    CC = np.zeros((IMAX, JMAX))
+    SOURCE = np.zeros((IMAX, JMAX))  # Iniciando matrizes
+
+    for J in range(0, JMAX):
+        for I in range(0, IMAX):
+            X1 = -DY * (NY - 1) / 2.0 + DY * I
+            PERT = (1.0 - AMP * np.cos(ONDA * X1))
+            DEN[I, J] = DEN_I[J] * PERT
+
+    # Programa Principal
+    # Criando matrizes necessarias
+    EOZ = np.zeros((JMAX))
+    VY = np.zeros((IMAX, JMAX))
+    VZ = np.zeros((IMAX, JMAX))
+    DTDZ = np.zeros((IMAX, JMAX))
+    DTDY = np.zeros((IMAX, JMAX))
+    UY = np.zeros((JMAX))
+    OMEGA = 0
+    K = 0
+    EPS1 = 0
+    ANORM = 0
+
+    for E0 in EE0:  # Campo Electrico = Tempo = 540 interactions
+        # for J in range(0, JMAX):
+        #     EOZ[J] = -E0
+        #     UY = UYZ
+        #     UX[J] = 0.0
+        EOZ = [(i - i - E0) for i in EOZ]
+        # Tempo - Vento
+        # UY = UYZ
+        # UX = [(i - i) for i in UX]
+
+        # Vetor Tempo - Vento (PONTO)
+
+        DEN, AA, CC, SOURCE = coef_pot(IMAX, JMAX, DY, DZ, CFO, DEN, AA, CC, SOURCE, E0, OMEGA1, EOZ, UY, UX, COSDIP, SENDIP, BO)
+
+        T, OMEGA, K, EPS1, ANORM = potencial(T, DY, DZ, IMAX, JMAX, AA, CC, SOURCE, OMEGA, K, EPS1, ANORM)
+
+        start_logging(OMEGA, K, EPS1, ANORM)
+
+        VY, VZ, DTDZ, DTDY = veloc_ion(IMAX, JMAX, DY, DZ, T, CFO, OMEGA1, E0, UY, UX, EOZ, COSDIP, SENDIP, BO, VY, VZ, DTDZ, DTDY)
+
+        DEN, DY, DZ, VY, VZ = density(DEN, IMAX, JMAX, DY, DZ, BETA, DTT, VY, VZ)
+
+    # Normalizacoes
+    start_norm(DY, DZ, HB, NY, XLAT, IMAX, JMAX, DEN, VY, VZ, CO, CO2, CN2)
+
+    print('Processo {} terminado em: {}'.format(M, str(datetime.utcnow() - tempo_inicio)))
+
+
 if __name__ == '__main__':
     # Pegando o tempo de inicio do programa.
     tempo_inicio = datetime.utcnow()
@@ -134,12 +206,8 @@ if __name__ == '__main__':
     UX, UYZ = leitores.leitor_vento_termosferico("inputs/input-wind.dat")
 
     # Criando o Point do PyGlow
-    print('criando ponto')
     ponto = Point(dn, msis_lat, msis_lon, msis_alt)
-    print('rodando msis')
     ponto.run_msis()
-    print(ponto.Tn_msis, np.float64(ponto.nn['O']), np.float64(ponto.nn['O2']), np.float64(ponto.nn['N2']))
-
 
     # Definindo parametros da malha
     IMAX = NY           # Contador en la horizontal
@@ -201,73 +269,9 @@ if __name__ == '__main__':
 
     # Parametros plano meridional magnetico
     for M in range(0, 21):
-        XLAT = -30.0 + 3.0 * M
-        PHI = XLAT * PI / 180.0
-        COSLAT = np.cos(PHI)
-        SENLAT = np.sin(PHI)
-        COSDIP = COSLAT / np.sqrt(1.0 + 3.0 * SENLAT ** 2.0)
-        SENDIP = 2. * SENLAT / np.sqrt(1. + 3. * SENLAT ** 2.0)
-        F1 = COSLAT ** 3.0 / np.sqrt(1.0 + 3. * SENLAT ** 2.0)   # to  zonal electric
-        F2 = COSLAT ** 3.0                                 # to vertical electric
-        F3 = np.sqrt(1. + 3. * SENLAT ** 2.)
-        FU = 1.0 / (0.7 + 0.4 * np.exp(-(XLAT) ** 2.0 / 200.0) - 0.035)
+        Process(target=loop_lat, args=(M, DY, DZ, ponto, tempo_inicio)).start()
 
-        # Parametros do Point
-        ponto.lat = XLAT
-        UY, UX = get_all_uy_ux(ponto, versao_hwm)
-        np.savetxt('uy.txt', UY)
-        np.savetxt('ux.txt', UX)
+    # for p in prs:
+    #     p.join()
 
-        # Malha inicial + perturbacao zonal em t = 0
-        DEN = np.zeros((IMAX, JMAX))
-        DEN2 = np.zeros((IMAX, JMAX))
-        T = np.zeros((IMAX, JMAX))
-        AA = np.zeros((IMAX, JMAX))
-        CC = np.zeros((IMAX, JMAX))
-        SOURCE = np.zeros((IMAX, JMAX))  # Iniciando matrizes
-
-        for J in range(0, JMAX):
-            for I in range(0, IMAX):
-                X1 = -DY * (NY - 1) / 2.0 + DY * I
-                PERT = (1.0 - AMP * np.cos(ONDA * X1))
-                DEN[I, J] = DEN_I[J] * PERT
-
-        # Programa Principal
-        # Criando matrizes necessarias
-        EOZ = np.zeros((JMAX))
-        VY = np.zeros((IMAX, JMAX))
-        VZ = np.zeros((IMAX, JMAX))
-        DTDZ = np.zeros((IMAX, JMAX))
-        DTDY = np.zeros((IMAX, JMAX))
-        UY = np.zeros((JMAX))
-        OMEGA = 0
-        K = 0
-        EPS1 = 0
-        ANORM = 0
-
-        for E0 in EE0:  # Campo Electrico = Tempo = 540 interactions
-            # for J in range(0, JMAX):
-            #     EOZ[J] = -E0
-            #     UY = UYZ
-            #     UX[J] = 0.0
-            EOZ = [(i - i - E0) for i in EOZ]
-            # Tempo - Vento
-            # UY = UYZ
-            # UX = [(i - i) for i in UX]
-
-            # Vetor Tempo - Vento (PONTO)
-
-            DEN, AA, CC, SOURCE = coef_pot(IMAX, JMAX, DY, DZ, CFO, DEN, AA, CC, SOURCE, E0, OMEGA1, EOZ, UY, UX, COSDIP, SENDIP, BO)
-
-            T, OMEGA, K, EPS1, ANORM = potencial(T, DY, DZ, IMAX, JMAX, AA, CC, SOURCE, OMEGA, K, EPS1, ANORM)
-
-            start_logging(OMEGA, K, EPS1, ANORM)
-
-            VY, VZ, DTDZ, DTDY = veloc_ion(IMAX, JMAX, DY, DZ, T, CFO, OMEGA1, E0, UY, UX, EOZ, COSDIP, SENDIP, BO, VY, VZ, DTDZ, DTDY)
-
-            DEN, DY, DZ, VY, VZ = density(DEN, IMAX, JMAX, DY, DZ, BETA, DTT, VY, VZ)
-
-        # Normalizacoes
-        start_norm(DY, DZ, HB, NY, XLAT, IMAX, JMAX, DEN, VY, VZ, CO, CO2, CN2)
-
-    print("Tempo de execucao -> " + str(datetime.utcnow() - tempo_inicio))
+    # print("Tempo de execucao -> " + str(datetime.utcnow() - tempo_inicio))

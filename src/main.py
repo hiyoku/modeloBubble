@@ -1,11 +1,13 @@
 # Making a compartible code
+# Coding=UTF-8
 from __future__ import print_function
+import cPickle as cp
 
 # Python Native lib imports
 import numpy as np
 import os
 from datetime import datetime
-from multiprocessing import Process
+from multiprocessing import Process, Lock
 
 # Import PyGlow
 from pyglow.pyglow import Point
@@ -104,13 +106,14 @@ def get_all_uy_ux(point, ver):
         point.run_hwm(version=ver)
         UY.append(point.u)
         UX.append(point.v)
+        # UX.append(0.0)
 
         i += 5  # passo em 5km
 
     return UY, UX
 
 
-def loop_lat(M, DY, DZ, ponto, tempo_inicio):
+def loop_lat(M, DY, DZ, ponto, tempo_inicio, lock, versao_v):
     print('Processo {} iniciado!'.format(M))
     XLAT = -30.0 + 3.0 * M
     PHI = XLAT * PI / 180.0
@@ -155,6 +158,7 @@ def loop_lat(M, DY, DZ, ponto, tempo_inicio):
     EPS1 = 0
     ANORM = 0
 
+    DEN_TOTAL = []
     for E0 in EE0:  # Campo Electrico = Tempo = 540 interactions
         # for J in range(0, JMAX):
         #     EOZ[J] = -E0
@@ -177,15 +181,28 @@ def loop_lat(M, DY, DZ, ponto, tempo_inicio):
 
         DEN, DY, DZ, VY, VZ = density(DEN, IMAX, JMAX, DY, DZ, BETA, DTT, VY, VZ)
 
+        DEN_TOTAL.append([XLAT, DEN, E0])
+
     # Normalizacoes
+    lock.acquire()
     start_norm(DY, DZ, HB, NY, XLAT, IMAX, JMAX, DEN, VY, VZ, CO, CO2, CN2)
+    DEN_FINAL = cp.load(open(versao_v, 'rb'))
+    DEN_FINAL.append(DEN_TOTAL)
+    cp.dump(DEN_FINAL, open(versao_v, 'wb'))
+    lock.release()
 
     print('Processo {} terminado em: {}'.format(M, str(datetime.utcnow() - tempo_inicio)))
 
 
 if __name__ == '__main__':
     # Pegando o tempo de inicio do programa.
+    lock = Lock()
     tempo_inicio = datetime.utcnow()
+
+    # Constantes para armazenar as variaveis
+    versao_v = 'v1'
+    d = []
+    cp.dump(d, open(versao_v, 'wb'))
 
     # Definindo constantes
     NY = 81
@@ -270,7 +287,7 @@ if __name__ == '__main__':
 
     # Parametros plano meridional magnetico
     for M in range(0, 21):
-        Process(target=loop_lat, args=(M, DY, DZ, ponto, tempo_inicio)).start()
+        Process(target=loop_lat, args=(M, DY, DZ, ponto, tempo_inicio, lock, versao_v)).start()
 
     # for p in prs:
     #     p.join()

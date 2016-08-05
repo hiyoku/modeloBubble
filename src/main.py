@@ -1,19 +1,24 @@
 # Making a compartible code
 # Coding=UTF-8
 from __future__ import print_function
-import cPickle as cp
+try:
+    import cPickle as cp
+except:
+    import pickle as cp
 
 # Python Native lib imports
 import numpy as np
 import os
 from datetime import datetime
 from multiprocessing import Process, Lock
+from time import sleep
 
 # Import PyGlow
 from pyglow.pyglow import Point
 
 # Program imports
 import leitores
+from den import Den
 from rotinas_fortran import (potencial, coef_pot, veloc_ion, density, line1356, line6300, tecn)
 
 
@@ -105,7 +110,7 @@ def get_all_uy_ux(point, ver):
         point.alt = i
         point.run_hwm(version=ver)
         UY.append(point.u)
-        UX.append(point.v)
+        UX.append(-point.v)
         # UX.append(0.0)
 
         i += 5  # passo em 5km
@@ -113,8 +118,9 @@ def get_all_uy_ux(point, ver):
     return UY, UX
 
 
-def loop_lat(M, DY, DZ, ponto, tempo_inicio, lock, versao_v):
+def loop_lat(M, DY, DZ, ponto, tempo_inicio, lock, versao_v, EE0):
     print('Processo {} iniciado!'.format(M))
+
     XLAT = -30.0 + 3.0 * M
     PHI = XLAT * PI / 180.0
     COSLAT = np.cos(PHI)
@@ -167,7 +173,7 @@ def loop_lat(M, DY, DZ, ponto, tempo_inicio, lock, versao_v):
         EOZ = [(i - i - E0) for i in EOZ]
         # Tempo - Vento
         # UY = UYZ
-        # UX = [(i - i) for i in UX]
+        UX = [(i - i) for i in UX]
 
         # Vetor Tempo - Vento (PONTO)
 
@@ -175,20 +181,22 @@ def loop_lat(M, DY, DZ, ponto, tempo_inicio, lock, versao_v):
 
         T, OMEGA, K, EPS1, ANORM = potencial(T, DY, DZ, IMAX, JMAX, AA, CC, SOURCE, OMEGA, K, EPS1, ANORM)
 
-        start_logging(OMEGA, K, EPS1, ANORM)
+        # start_logging(OMEGA, K, EPS1, ANORM)
 
         VY, VZ, DTDZ, DTDY = veloc_ion(IMAX, JMAX, DY, DZ, T, CFO, OMEGA1, E0, UY, UX, EOZ, COSDIP, SENDIP, BO, VY, VZ, DTDZ, DTDY)
 
         DEN, DY, DZ, VY, VZ = density(DEN, IMAX, JMAX, DY, DZ, BETA, DTT, VY, VZ)
 
-        DEN_TOTAL.append([XLAT, DEN, E0])
+        DEN_TOTAL.append(Den(XLAT, DEN, E0))
 
     # Normalizacoes
     lock.acquire()
+
     start_norm(DY, DZ, HB, NY, XLAT, IMAX, JMAX, DEN, VY, VZ, CO, CO2, CN2)
-    DEN_FINAL = cp.load(open(versao_v, 'rb'))
-    DEN_FINAL.append(DEN_TOTAL)
-    cp.dump(DEN_FINAL, open(versao_v, 'wb'))
+    DEN_FINAL = cp.load(open(versao_v, 'r'))
+    for den in DEN_TOTAL:
+        DEN_FINAL.append(den)
+    cp.dump(DEN_FINAL, open(versao_v, 'w'))
     lock.release()
 
     print('Processo {} terminado em: {}'.format(M, str(datetime.utcnow() - tempo_inicio)))
@@ -200,9 +208,9 @@ if __name__ == '__main__':
     tempo_inicio = datetime.utcnow()
 
     # Constantes para armazenar as variaveis
-    versao_v = 'v1'
+    versao_v = 'v0'
     d = []
-    cp.dump(d, open(versao_v, 'wb'))
+    cp.dump(d, open(versao_v, 'w'))
 
     # Definindo constantes
     NY = 81
@@ -287,7 +295,7 @@ if __name__ == '__main__':
 
     # Parametros plano meridional magnetico
     for M in range(0, 21):
-        Process(target=loop_lat, args=(M, DY, DZ, ponto, tempo_inicio, lock, versao_v)).start()
+        Process(target=loop_lat, args=(M, DY, DZ, ponto, tempo_inicio, lock, versao_v, EE0)).start()
 
     # for p in prs:
     #     p.join()

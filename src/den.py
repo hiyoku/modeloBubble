@@ -1,22 +1,39 @@
+# !/usr/bin/python2
+# Coding=UTF-8
 import numpy as np
 from scipy.io import netcdf
 
-class Den():
-    def __init__(self, xlat, den, vy, vz, dz, dy, co, co2, cn2, e0):
+
+class BubbleModelStorage():
+    def __init__(self, xlat, e0):
+        # Indices
         self.xlat = xlat
+        self.e0 = e0
+
+        self.den = None
+        self.vy = None
+        self.vz = None
+        self.dz = None
+        self.dy = None
+        self.co = None
+        self.co2 = None
+        self.cn2 = None
+
+    def get_indices(self):
+        """
+            This function returns Lat and Time (e0)
+        """
+        return self.xlat, self.e0
+
+    def set_info(self, den, vy, vz, dy, dz, co, co2, cn2):
         self.den = den
         self.vy = vy
         self.vz = vz
-        self.dz = dz
         self.dy = dy
+        self.dz = dz
         self.co = co
         self.co2 = co2
         self.cn2 = cn2
-        self.e0 = e0
-
-    def get_info(self):
-        return self.xlat, self.e0
-
 
 # Function to search in a ListDen
 def search(denList, xlat, e0):

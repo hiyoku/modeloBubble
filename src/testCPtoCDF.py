@@ -1,5 +1,5 @@
 import cPickle as cp
-import den
+import BubbleModelStorage as BMS
 
-denList = cp.load(open('output/v0', 'r'))
-den.create_netcdf(denList)
+denList = cp.load(open('v2', 'r'))
+BMS.create_netcdf(denList, name="dataset_semt")

@@ -18,7 +18,7 @@ from pyglow.pyglow import Point
 
 # Program imports
 import leitores
-from den import Den
+from BubbleModelStorage import BubbleModelStorage as BMS
 from rotinas_fortran import (potencial, coef_pot, veloc_ion, density, line1356, line6300, tecn)
 
 
@@ -56,7 +56,9 @@ def write_all(DY, DZ, HB, NY, XLAT, IMAX, JMAX, DEN, VY, VZ, CO, CO2, CN2):
 
     r1 = open('output/output-line1356.dat', 'a')
     r2 = open('output/output-line6300.dat', 'a')
+    r2_raw = open('output/output-line6300-raw.dat', 'a')
     te = open('output/output-tec.dat', 'a')
+    te_raw = open('output/output-tec-raw.dat', 'a')
     d1 = open('output/output-den.dat', 'a')
 
     for I in range(0, IMAX):
@@ -65,6 +67,8 @@ def write_all(DY, DZ, HB, NY, XLAT, IMAX, JMAX, DEN, VY, VZ, CO, CO2, CN2):
         r1.write("{}   {}   {}\n".format(X1, XLAT, np.log10(R1356[I] / 1E6)))
         r2.write("{}   {}   {}\n".format(X1, XLAT, np.log10(R6300[I] / 1E6)))
         te.write("{}   {}   {}\n".format(X1, XLAT, TEC[I] / 1.0E16))
+        r2_raw.write("{}   {}   {}\n".format(X1, XLAT, R6300[I]))
+        te_raw.write("{}   {}   {}\n".format(X1, XLAT, TEC[I]))
 
         for J in range(0, JMAX):
             Z1 = HB + DZ * J
@@ -72,7 +76,9 @@ def write_all(DY, DZ, HB, NY, XLAT, IMAX, JMAX, DEN, VY, VZ, CO, CO2, CN2):
 
     r1.close()
     r2.close()
+    r2_raw.close()
     te.close()
+    te_raw.close()
     d1.close()
 
 
@@ -118,7 +124,7 @@ def get_all_uy_ux(point, ver):
     return UY, UX
 
 
-def loop_lat(M, DY, DZ, ponto, tempo_inicio, lock, versao_v, EE0):
+def loop_lat(M, DY, DZ, OMEGA1, ponto, tempo_inicio, lock, versao_v, EE0):
     print('Processo {} iniciado!'.format(M))
 
     XLAT = -30.0 + 3.0 * M
@@ -176,7 +182,6 @@ def loop_lat(M, DY, DZ, ponto, tempo_inicio, lock, versao_v, EE0):
         UX = [(i - i) for i in UX]
 
         # Vetor Tempo - Vento (PONTO)
-
         DEN, AA, CC, SOURCE = coef_pot(IMAX, JMAX, DY, DZ, CFO, DEN, AA, CC, SOURCE, E0, OMEGA1, EOZ, UY, UX, COSDIP, SENDIP, BO)
 
         T, OMEGA, K, EPS1, ANORM = potencial(T, DY, DZ, IMAX, JMAX, AA, CC, SOURCE, OMEGA, K, EPS1, ANORM)
@@ -187,15 +192,20 @@ def loop_lat(M, DY, DZ, ponto, tempo_inicio, lock, versao_v, EE0):
 
         DEN, DY, DZ, VY, VZ = density(DEN, IMAX, JMAX, DY, DZ, BETA, DTT, VY, VZ)
 
-        DEN_TOTAL.append(Den(XLAT, DEN, E0))
+        bms_temp = BMS(XLAT, E0)
+        bms_temp.set_2d_array(DEN, VY, VZ, T)
+        bms_temp.set_1d_array(CO, CO2, CN2, BETA, CFO, DEN_I, UX, UY, EOZ)
+        bms_temp.set_escalar(DY, DZ, BO, JMAX, IMAX, DTT, UT0, HB, RK1, RK2, TN, TE, OMEGA1, ZLAMDA, ONDA, AMP, p_o, p_o2, p_n2)
+
+        DEN_TOTAL.append(bms_temp)
 
     # Normalizacoes
     lock.acquire()
 
     start_norm(DY, DZ, HB, NY, XLAT, IMAX, JMAX, DEN, VY, VZ, CO, CO2, CN2)
     DEN_FINAL = cp.load(open(versao_v, 'r'))
-    for den in DEN_TOTAL:
-        DEN_FINAL.append(den)
+    for bms in DEN_TOTAL:
+        DEN_FINAL.append(bms)
     cp.dump(DEN_FINAL, open(versao_v, 'w'))
     lock.release()
 
@@ -208,9 +218,32 @@ if __name__ == '__main__':
     tempo_inicio = datetime.utcnow()
 
     # Constantes para armazenar as variaveis
-    versao_v = 'v0'
+    versao_v = 'v2'
     d = []
     cp.dump(d, open(versao_v, 'w'))
+
+    # Limpando outputs
+    r1 = open('output/output-line1356.dat', 'w')
+    r2 = open('output/output-line6300.dat', 'w')
+    r2_raw = open('output/output-line6300-raw.dat', 'w')
+    te = open('output/output-tec.dat', 'w')
+    te_raw = open('output/output-tec-raw.dat', 'w')
+    d1 = open('output/output-den.dat', 'w')
+
+    r1.write("")
+    r2.write("")
+    r2_raw.write("")
+    te.write("")
+    te_raw.write("")
+    d1.write("")
+
+
+    r1.close()
+    r2.close()
+    r2_raw.close()
+    te.close()
+    te_raw.close()
+    d1.close()
 
     # Definindo constantes
     NY = 81
@@ -277,6 +310,9 @@ if __name__ == '__main__':
         # CO[J] = 8.557E+08 * np.exp(-(Z1 - 335.0) / HO)  # Oxigeno atomico    [cm-3]
         # CO2[J] = 4.44E+06 * np.exp(-(Z1 - 335.0) / HO2)  # Oxigeno molecular [cm3]
         # CN2[J] = 2.264E+08 * np.exp(-(Z1 - 335.0) / HN2)  # Nitrogeno molecular[cm3]
+        p_o = ponto.nn['O']
+        p_o2 = ponto.nn['O2']
+        p_n2 = ponto.nn['N2']
         CO[J] = np.float64(ponto.nn['O']) * np.exp(-(Z1 - 335.0) / HO)  # Oxigeno atomico    [cm-3]
         CO2[J] = np.float64(ponto.nn['O2']) * np.exp(-(Z1 - 335.0) / HO2)  # Oxigeno molecular [cm3]
         CN2[J] = np.float64(ponto.nn['N2']) * np.exp(-(Z1 - 335.0) / HN2)  # Nitrogeno molecular[cm3]
@@ -295,7 +331,7 @@ if __name__ == '__main__':
 
     # Parametros plano meridional magnetico
     for M in range(0, 21):
-        Process(target=loop_lat, args=(M, DY, DZ, ponto, tempo_inicio, lock, versao_v, EE0)).start()
+        Process(target=loop_lat, args=(M, DY, DZ, OMEGA1, ponto, tempo_inicio, lock, versao_v, EE0)).start()
 
     # for p in prs:
     #     p.join()

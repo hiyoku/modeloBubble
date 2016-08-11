@@ -111,6 +111,13 @@ def find_by_lat(denList, xlat):
 
     return resultList
 
+def find_by_tempo(denList, e0):
+    resultList = []
+    for den in denList:
+        if den.e0 == np.float64(0.19E-04 * e0):
+            resultList.append(den)
+    return resultList
+
 
 # Create a NETCDF file, Name is a optional input
 def create_netcdf(denList, name=None):

@@ -179,7 +179,7 @@ def loop_lat(M, DY, DZ, OMEGA1, ponto, tempo_inicio, lock, versao_v, EE0):
         EOZ = [(i - i - E0) for i in EOZ]
         # Tempo - Vento
         # UY = UYZ
-        UX = [(i - i) for i in UX]
+        # UX = [(i - i) for i in UX]
 
         # Vetor Tempo - Vento (PONTO)
         DEN, AA, CC, SOURCE = coef_pot(IMAX, JMAX, DY, DZ, CFO, DEN, AA, CC, SOURCE, E0, OMEGA1, EOZ, UY, UX, COSDIP, SENDIP, BO)
@@ -236,7 +236,6 @@ if __name__ == '__main__':
     te.write("")
     te_raw.write("")
     d1.write("")
-
 
     r1.close()
     r2.close()
